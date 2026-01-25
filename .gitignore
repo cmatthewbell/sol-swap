@@ -1,0 +1,27 @@
+# Anchor / Solana
+.anchor
+target
+test-ledger
+**/*.rs.bk
+
+# Dependencies
+node_modules
+.yarn
+
+# OS
+.DS_Store
+
+# IDE
+.idea
+.vscode
+
+# Env / Secrets
+.env
+.env.*
+*.pem
+
+# Logs
+*.log
+
+# Personal
+BUILD_GUIDE.md
