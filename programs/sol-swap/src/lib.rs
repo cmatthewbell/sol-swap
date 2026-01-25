@@ -11,6 +11,7 @@ pub mod sol_swap {
     pub fn create_swap_from_sol(ctx: Context<CreateSwapFromSol>, offered_amount: u64, wanted_asset: Asset) -> Result<()> {
         // transfer SOL from maker to escrow
         // Populate escrow account with account fields
+        Ok(())
     }
 
     // creates swap with SPL and wants SOL
