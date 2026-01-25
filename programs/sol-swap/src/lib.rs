@@ -5,12 +5,23 @@ declare_id!("2cESwGJN1TtkYENEYqQFJNAjDnkyhHjCUUeRmibP8RuP");
 #[program]
 pub mod sol_swap {
     use super::*;
-
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
-        Ok(())
-    }
 }
 
-#[derive(Accounts)]
-pub struct Initialize {}
+#[account]
+pub struct Escrow {
+    maker: Pubkey,
+    offered_asset: Asset,
+    wanted_asset: Asset,
+    bump: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+enum Asset {
+    Sol {
+        amount: u64,
+    },
+    Token {
+        mint: Pubkey,
+        amount: u64,
+    },
+}
