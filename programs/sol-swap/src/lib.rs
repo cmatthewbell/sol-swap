@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
+use anchor_lang::system_program;
 
 declare_id!("2cESwGJN1TtkYENEYqQFJNAjDnkyhHjCUUeRmibP8RuP");
 
@@ -9,8 +9,26 @@ pub mod sol_swap {
 
     // creates swap with SOL and wants SPL
     pub fn create_swap_from_sol(ctx: Context<CreateSwapFromSol>, offered_amount: u64, wanted_asset: Asset) -> Result<()> {
-        // transfer SOL from maker to escrow
         // Populate escrow account with account fields
+        ctx.accounts.escrow.maker = ctx.accounts.maker.key();
+        ctx.accounts.escrow.offered_asset = Asset::Sol {amount: offered_amount};
+        ctx.accounts.escrow.wanted_asset = wanted_asset;
+        ctx.accounts.escrow.bump = ctx.bumps.escrow;
+
+        // transfer SOL from maker to escrow
+        let from_pubkey = ctx.accounts.maker.to_account_info();
+        let to_pubkey = ctx.accounts.escrow.to_account_info();
+        let sys = ctx.accounts.system_program.to_account_info();
+
+        let cpi_ctx = CpiContext::new(
+            sys,
+            system_program::Transfer {
+                from: from_pubkey,
+                to: to_pubkey,
+            }
+        );
+
+        system_program::transfer(cpi_ctx, offered_amount)?;
         Ok(())
     }
 
