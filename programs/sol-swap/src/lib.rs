@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use anchor_spl::token::{self, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, Token, TokenAccount};
 
 declare_id!("2cESwGJN1TtkYENEYqQFJNAjDnkyhHjCUUeRmibP8RuP");
 
@@ -30,6 +30,10 @@ pub mod sol_swap {
         );
 
         system_program::transfer(cpi_ctx, offered_amount)?;
+        Ok(())
+    }
+
+    pub fn create_swap_from_token(ctx: Context<CreateSwapFromToken>, offered_asset: Asset, wanted_asset: Asset) -> Result<()> {
         Ok(())
     }
 
@@ -71,8 +75,52 @@ pub mod sol_swap {
 
         Ok(())
     }
+}
 
-    // creates swap with SPL and wants SOL
+#[derive(Accounts)]
+pub struct CreateSwapFromSol<'info> {
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    #[account(init,
+        payer = maker,
+        space = 8 + Escrow::INIT_SPACE,
+        seeds = [b"escrow", maker.key().as_ref()],
+        bump,
+    )]
+    pub escrow: Account<'info, Escrow>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CreateSwapFromToken<'info> {
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    #[account(
+        init,
+        payer = maker,
+        space = 8 + Escrow::INIT_SPACE,
+        seeds = [b"escrow", maker.key().as_ref()],
+        bump,
+    )]
+    pub escrow: Account<'info, Escrow>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    #[account(
+        init,
+        payer = maker,
+        token::mint = mint,
+        token::authority = escrow,
+        seeds = [b"escrow_token", escrow.key().as_ref()],
+        bump,
+    )]
+    pub escrow_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        token::mint = mint,
+        token::authority = maker,
+    )]
+    pub maker_token_account: Account<'info, TokenAccount>,
+    pub mint: Account<'info, Mint>
 }
 
 #[derive(Accounts)]
@@ -99,20 +147,6 @@ pub struct CancelSwap<'info> {
         token::authority = escrow
     )]
     pub escrow_token_account: Option<Account<'info, TokenAccount>>,
-}
-
-#[derive(Accounts)]
-pub struct CreateSwapFromSol<'info> {
-    #[account(mut)]
-    pub maker: Signer<'info>,
-    #[account(init,
-        payer = maker,
-        space = 8 + Escrow::INIT_SPACE,
-        seeds = [b"escrow", maker.key().as_ref()],
-        bump,
-    )]
-    pub escrow: Account<'info, Escrow>,
-    pub system_program: Program<'info, System>,
 }
 
 #[account]
