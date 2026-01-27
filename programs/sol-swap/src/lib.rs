@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
+use anchor_spl::token::{Token, TokenAccount};
 
 declare_id!("2cESwGJN1TtkYENEYqQFJNAjDnkyhHjCUUeRmibP8RuP");
 
@@ -32,7 +33,40 @@ pub mod sol_swap {
         Ok(())
     }
 
+    // cancel swap
+    pub fn cancel_swap(ctx: Context<CancelSwap>) -> Result<()> {
+        // transfer back to maker
+        // close escrow account
+        Ok(())
+    }
+
     // creates swap with SPL and wants SOL
+}
+
+#[derive(Accounts)]
+pub struct CancelSwap<'info> {
+    #[account(mut)]
+    pub maker: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"escrow", maker.key().as_ref()],
+        has_one = maker,
+        close = maker,
+        bump
+    )]
+    pub escrow: Account<'info, Escrow>,
+    pub system_program: Program<'info, System>,
+    pub token_program: Option<Program<'info, Token>>,
+    #[account(
+        mut,
+        token::authority = maker
+    )]
+    pub maker_token_account: Option<Account<'info, TokenAccount>>,
+    #[account(
+        mut,
+        token::authority = escrow
+    )]
+    pub escrow_token_account: Option<Account<'info, TokenAccount>>,
 }
 
 #[derive(Accounts)]
