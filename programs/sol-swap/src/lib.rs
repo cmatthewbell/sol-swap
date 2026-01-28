@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use anchor_spl::token::{self, Mint, Token, TokenAccount};
+use anchor_spl::token::{self, Mint, Token, TokenAccount, CloseAccount};
 
 declare_id!("2cESwGJN1TtkYENEYqQFJNAjDnkyhHjCUUeRmibP8RuP");
 
@@ -33,7 +33,29 @@ pub mod sol_swap {
         Ok(())
     }
 
-    pub fn create_swap_from_token(ctx: Context<CreateSwapFromToken>, offered_asset: Asset, wanted_asset: Asset) -> Result<()> {
+    pub fn create_swap_from_token(ctx: Context<CreateSwapFromToken>, offered_amount: u64, wanted_asset: Asset) -> Result<()> {
+        ctx.accounts.escrow.maker = ctx.accounts.maker.key();
+        ctx.accounts.escrow.wanted_asset = wanted_asset;
+        ctx.accounts.escrow.offered_asset = Asset::Token {
+            mint: ctx.accounts.mint.key(),
+            amount: offered_amount
+        };
+        ctx.accounts.escrow.bump = ctx.bumps.escrow;
+
+        let tkn_program = ctx.accounts.token_program.to_account_info();
+        let from_pubkey = ctx.accounts.maker_token_account.to_account_info();
+        let to_pubkey = ctx.accounts.escrow_token_account.to_account_info();
+
+        let cpi_ctx = CpiContext::new(
+            tkn_program,
+            token::Transfer {
+                from: from_pubkey,
+                to: to_pubkey,
+                authority: ctx.accounts.maker.to_account_info()
+            }
+        );
+
+        token::transfer(cpi_ctx, offered_amount)?;
         Ok(())
     }
 
@@ -67,6 +89,17 @@ pub mod sol_swap {
                     signer_seeds
                 );
                 token::transfer(token_ctx, *amount)?;
+
+                let close_ctx = CpiContext::new_with_signer(
+                    token_program_acct.to_account_info(),
+                    token::CloseAccount {
+                        account: escrow_token_acct.to_account_info(),
+                        destination: ctx.accounts.maker.to_account_info(),
+                        authority: ctx.accounts.escrow.to_account_info(),
+                    },
+                    signer_seeds
+                );
+                token::close_account(close_ctx)?;
             },
             Asset::Sol { .. } => {
 
@@ -144,7 +177,9 @@ pub struct CancelSwap<'info> {
     pub maker_token_account: Option<Account<'info, TokenAccount>>,
     #[account(
         mut,
-        token::authority = escrow
+        token::authority = escrow,
+        seeds = [b"escrow_token", escrow.key().as_ref()],
+        bump
     )]
     pub escrow_token_account: Option<Account<'info, TokenAccount>>,
 }
